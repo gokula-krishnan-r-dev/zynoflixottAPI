@@ -9,7 +9,7 @@
     "start": "node dist/index.js",
     "dev": "nodemon index.ts",
     "build": "tsc",
-    "vercel-build": "node build.js && tsc -p tsconfig.vercel.json",
+    "vercel-build": "tsc -p tsconfig.vercel.json",
     "postinstall": "tsc -p tsconfig.vercel.json",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
