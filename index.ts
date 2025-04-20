@@ -5,7 +5,43 @@ import cors from "cors";
 import routor from "./src/routes/router";
 import Chat from "./src/Chat";
 import bodyParser from "body-parser";
+import path from "path";
+import fs from "fs";
+
+// Check if running in production (Vercel)
+const isProduction = process.env.NODE_ENV === "production";
+
+// Configure environment variables
 dotenv.config();
+
+// Attempt to load router and Chat modules dynamically in production
+let routerModule: any;
+let ChatModule: any;
+
+try {
+  if (isProduction) {
+    // In production, check for compiled JS files
+    try {
+      routerModule = require("./src/routes/router").default;
+    } catch (err) {
+      console.error("Error loading router module:", err);
+      routerModule = null;
+    }
+
+    try {
+      ChatModule = require("./src/Chat").default;
+    } catch (err) {
+      console.error("Error loading Chat module:", err);
+      ChatModule = null;
+    }
+  } else {
+    // In development, use the imported values
+    routerModule = routor;
+    ChatModule = Chat;
+  }
+} catch (error) {
+  console.error("Module loading error:", error);
+}
 
 const MONGODB_URI =
   "mongodb+srv://gokula2323:wqSbxeNfSxVd1eyw@cluster0.vd91zsm.mongodb.net/ott?retryWrites=true&w=majority";
@@ -15,7 +51,6 @@ mongoose.connect(MONGODB_URI, {
   // useUnifiedTopology: true,
 });
 
-dotenv.config();
 const connectToMongoDB = mongoose.connection;
 
 connectToMongoDB.on(
@@ -27,7 +62,15 @@ connectToMongoDB.once("open", () => {
   console.log("Connected to MongoDB");
 });
 
-Chat();
+// Initialize Chat if available
+if (ChatModule) {
+  try {
+    ChatModule();
+  } catch (error) {
+    console.error("Error initializing Chat module:", error);
+  }
+}
+
 const app: Express = express();
 const port = process.env.PORT || 8080;
 app.use(
@@ -66,20 +109,26 @@ app.use(
     allowedHeaders: "Content-Type,Authorization,X-Requested-With,Accept,Origin", // Allow common headers
   })
 );
+
 app.get("/", (req: Request, res: Response) => {
-  res.send("Express + TypeScript Server");
+  res.send("Express + TypeScript Server is running");
 });
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static("public"));
-app.get("/", (req: Request, res: Response) => {
-  res.send("Express + TypeScript Server");
-});
 
-app.use(bodyParser.json({ limit: "22200000mb" })); // Adjust the limit as needed
-app.use(bodyParser.urlencoded({ limit: "522222222222220mb", extended: true }));
-app.use("/api", routor);
+app.use(bodyParser.json({ limit: "50mb" })); // Reduced limit for better performance
+app.use(bodyParser.urlencoded({ limit: "50mb", extended: true }));
+
+// Only attach the router if it was loaded successfully
+if (routerModule) {
+  app.use("/api", routerModule);
+} else {
+  app.use("/api", (req: Request, res: Response) => {
+    res.status(500).json({ error: "API routes not available" });
+  });
+}
 
 app.listen(port, () => {
   console.log(`[server]: Server is running at http://localhost:${port}`);

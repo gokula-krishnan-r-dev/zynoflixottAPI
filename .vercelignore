@@ -22,7 +22,5 @@ yarn-error.log*
 .env.test.local
 .env.production.local
 
-# Source files (we only need the dist)
-/src
 # But allow the final build to be deployed
 !/dist 

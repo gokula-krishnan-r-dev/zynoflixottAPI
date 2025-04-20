@@ -10,20 +10,60 @@ const cors_1 = __importDefault(require("cors"));
 const router_1 = __importDefault(require("./src/routes/router"));
 const Chat_1 = __importDefault(require("./src/Chat"));
 const body_parser_1 = __importDefault(require("body-parser"));
+// Check if running in production (Vercel)
+const isProduction = process.env.NODE_ENV === "production";
+// Configure environment variables
 dotenv_1.default.config();
+// Attempt to load router and Chat modules dynamically in production
+let routerModule;
+let ChatModule;
+try {
+    if (isProduction) {
+        // In production, check for compiled JS files
+        try {
+            routerModule = require("./src/routes/router").default;
+        }
+        catch (err) {
+            console.error("Error loading router module:", err);
+            routerModule = null;
+        }
+        try {
+            ChatModule = require("./src/Chat").default;
+        }
+        catch (err) {
+            console.error("Error loading Chat module:", err);
+            ChatModule = null;
+        }
+    }
+    else {
+        // In development, use the imported values
+        routerModule = router_1.default;
+        ChatModule = Chat_1.default;
+    }
+}
+catch (error) {
+    console.error("Module loading error:", error);
+}
 const MONGODB_URI = "mongodb+srv://gokula2323:wqSbxeNfSxVd1eyw@cluster0.vd91zsm.mongodb.net/ott?retryWrites=true&w=majority";
 // "mongodb+srv://gokul:UPw3fCb6kDmF5CsE@cluster0.klfb9oe.mongodb.net/ott?retryWrites=true&w=majority"
 mongoose_1.default.connect(MONGODB_URI, {
 // useNewUrlParser: true,
 // useUnifiedTopology: true,
 });
-dotenv_1.default.config();
 const connectToMongoDB = mongoose_1.default.connection;
 connectToMongoDB.on("error", console.error.bind(console, "MongoDB connection error:"));
 connectToMongoDB.once("open", () => {
     console.log("Connected to MongoDB");
 });
-(0, Chat_1.default)();
+// Initialize Chat if available
+if (ChatModule) {
+    try {
+        ChatModule();
+    }
+    catch (error) {
+        console.error("Error initializing Chat module:", error);
+    }
+}
 const app = (0, express_1.default)();
 const port = process.env.PORT || 8080;
 app.use((0, cors_1.default)({
@@ -59,17 +99,22 @@ app.use((0, cors_1.default)({
     allowedHeaders: "Content-Type,Authorization,X-Requested-With,Accept,Origin", // Allow common headers
 }));
 app.get("/", (req, res) => {
-    res.send("Express + TypeScript Server");
+    res.send("Express + TypeScript Server is running");
 });
 app.use(express_1.default.json());
 app.use(express_1.default.urlencoded({ extended: true }));
 app.use(express_1.default.static("public"));
-app.get("/", (req, res) => {
-    res.send("Express + TypeScript Server");
-});
-app.use(body_parser_1.default.json({ limit: "22200000mb" })); // Adjust the limit as needed
-app.use(body_parser_1.default.urlencoded({ limit: "522222222222220mb", extended: true }));
-app.use("/api", router_1.default);
+app.use(body_parser_1.default.json({ limit: "50mb" })); // Reduced limit for better performance
+app.use(body_parser_1.default.urlencoded({ limit: "50mb", extended: true }));
+// Only attach the router if it was loaded successfully
+if (routerModule) {
+    app.use("/api", routerModule);
+}
+else {
+    app.use("/api", (req, res) => {
+        res.status(500).json({ error: "API routes not available" });
+    });
+}
 app.listen(port, () => {
     console.log(`[server]: Server is running at http://localhost:${port}`);
 });
