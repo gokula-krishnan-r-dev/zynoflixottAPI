@@ -49,6 +49,8 @@ app.use(
         "http://localhost:3001",
         "https://zynoflixott-web.vercel.app",
         "https://2a9e-203-192-241-134.ngrok-free.app",
+        "https://zynoflix-ott-api.vercel.app",
+        "https://zynoflix-ott-api-*.vercel.app",
         // Add other origins if needed, potentially from environment variables
       ];
 
