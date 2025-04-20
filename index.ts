@@ -2,8 +2,8 @@ import express, { Express, Request, Response } from "express";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
 import cors from "cors";
-import routor from "./routes/router";
-import Chat from "./Chat";
+import routor from "./src/routes/router";
+import Chat from "./src/Chat";
 import bodyParser from "body-parser";
 dotenv.config();
 
