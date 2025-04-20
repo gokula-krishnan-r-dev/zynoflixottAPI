@@ -33,6 +33,11 @@ const ProductionCompanySchema = new mongoose_1.Schema({
     contactNumber: { type: String },
     password: { type: String },
     logo: { type: String },
+    profile_type: {
+        type: String,
+        enum: ["production", "directors"],
+        default: "production",
+    },
     backgroundImage: {
         type: String,
         default: "https://via.placeholder.com/150",

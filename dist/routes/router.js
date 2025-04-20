@@ -21,6 +21,9 @@ router.get("/auth/user/:user_id", userController_1.getUserById);
 router.post("/auth/signup", userController_1.createUser);
 router.post("/auth/login", userController_1.loginUser);
 router.get("/auth/logout", userController_1.logoutUser);
+router.post("/auth/tvos/otp", userController_1.createTvOsAuth);
+router.post("/auth/tvos/verify", userController_1.verifyTvOsAuth);
+router.get("/auth/verify/:uuid", userController_1.getByIdTvOsAuth);
 const cpUpdateUser = s3_1.upload.fields([
     { name: "profilePic", maxCount: 1 },
     { name: "backgroundPic", maxCount: 1 },
@@ -34,6 +37,7 @@ const cpUploadBackground = s3_1.upload.fields([
 ]);
 router.post("/auth/production/signup", cpUploadUser, userController_1.CreateProductionCompany);
 router.get("/auth/production/user", userController_1.getProductCompany);
+router.get("/auth/director/user", userController_1.getDirectorsCompany);
 router.get("/auth/production/user/:user_id", userController_1.getProductionCompanyById);
 router.put("/auth/production/user", findUserMiddleware_1.authMiddleware, cpUploadBackground, userController_1.updateProductionCompany);
 // upload video
@@ -92,4 +96,7 @@ router.get("/comment/:video_id", commentController_1.getCommentByVideoId);
 //notification
 router.post("/notification", findUserMiddleware_1.authMiddleware, notificationController_1.SendNotification);
 router.get("/notification", findUserMiddleware_1.authMiddleware, notificationController_1.GetNotification);
+//rating
+router.post("/rating/:video_id", findUserMiddleware_1.authMiddleware, videoController_1.rateVideo);
+router.get("/rating/:video_id", findUserMiddleware_1.authMiddleware, videoController_1.getRating);
 exports.default = router;

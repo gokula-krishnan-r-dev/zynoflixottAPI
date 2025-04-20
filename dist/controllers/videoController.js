@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getCategories = exports.getLikes = exports.postVideoLike = exports.postVideoViews = exports.trendingVideos = exports.BannerVideoFromAdmin = exports.addBannerVideo = exports.searchVideo = exports.findVideoByLanguage = exports.activeBanner = exports.findVideoByCategory = exports.bannerVideo = exports.findVideoByUserId = exports.findVideoById = exports.allVideos = exports.CreateBannervideos = exports.Createvideos = exports.SearchVideo = void 0;
+exports.getRating = exports.rateVideo = exports.getCategories = exports.getLikes = exports.postVideoLike = exports.postVideoViews = exports.trendingVideos = exports.BannerVideoFromAdmin = exports.addBannerVideo = exports.searchVideo = exports.findVideoByLanguage = exports.activeBanner = exports.findVideoByCategory = exports.bannerVideo = exports.findVideoByUserId = exports.findVideoById = exports.allVideos = exports.CreateBannervideos = exports.Createvideos = exports.SearchVideo = void 0;
 const uuid_1 = require("uuid");
 const sharp = require("sharp");
 const video_model_1 = __importDefault(require("../model/video.model"));
@@ -56,6 +56,11 @@ exports.SearchVideo = SearchVideo;
 const Createvideos = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { title, description, language, status, duration, category, is_feature_video, user, created_by_id, created_by_name, } = req.body;
+        console.log(req.files);
+        const exitingsVideo = yield video_model_1.default.find({ title: title });
+        if (exitingsVideo.length > 0) {
+            return res.status(400).json({ error: "Video already exists" });
+        }
         // Assuming thumbnail, preview_video, and orginal_video are available in req.files
         const thumbnail = req.files["thumbnail"][0].location;
         const preview_video = req.files["preview_video"][0].location;
@@ -385,6 +390,7 @@ exports.postVideoViews = postVideoViews;
 // POST add Like to video
 const postVideoLike = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
+        console.log(req.params);
         const video_id = req.params.video_id;
         const userId = req.userId;
         if (!userId) {
@@ -409,6 +415,7 @@ const postVideoLike = (req, res) => __awaiter(void 0, void 0, void 0, function* 
             videoData.likes += 1;
             videoData.likesId.push(newLike._id);
             yield videoData.save();
+            console.log("Like added");
             return res.status(200).json({ message: "Like added", videoData });
         }
         if (existingLike === null || existingLike === void 0 ? void 0 : existingLike[0].user_id.includes(userId)) {
@@ -506,3 +513,45 @@ const getCategories = (req, res) => __awaiter(void 0, void 0, void 0, function* 
     }
 });
 exports.getCategories = getCategories;
+const rateVideo = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a, _b, _c, _d;
+    const videoId = req.params.video_id;
+    const userId = req.userId;
+    const rating = req.body.rating;
+    const video = yield video_model_1.default.findById(videoId);
+    if (!video) {
+        console.log("Video not found");
+        return res.status(404).json({ error: "Video not found" });
+    }
+    // Check if the user has already rated the video
+    const existingRating = (_a = video.ratings) === null || _a === void 0 ? void 0 : _a.find((r) => r.userId.toString() === userId);
+    if (existingRating) {
+        // Update existing rating
+        existingRating.rating = rating;
+    }
+    else {
+        // Add new rating
+        (_b = video.ratings) === null || _b === void 0 ? void 0 : _b.push({ userId: userId, rating });
+    }
+    // Recalculate average rating
+    const totalRatings = ((_c = video.ratings) === null || _c === void 0 ? void 0 : _c.reduce((acc, r) => acc + r.rating, 0)) || 0;
+    const ratingCount = ((_d = video.ratings) === null || _d === void 0 ? void 0 : _d.length) || 1;
+    video.averageRating = totalRatings / ratingCount;
+    yield video.save();
+    res.status(200).json({ video });
+});
+exports.rateVideo = rateVideo;
+// get rating as per video
+const getRating = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _e;
+    try {
+        const video_id = req.params.video_id;
+        const video = yield video_model_1.default.findById(video_id);
+        res.status(200).json({ video, rating: (_e = video === null || video === void 0 ? void 0 : video.ratings) === null || _e === void 0 ? void 0 : _e.length });
+    }
+    catch (error) {
+        console.log(error);
+        res.status(500).json({ error: "Something went wrong!" });
+    }
+});
+exports.getRating = getRating;

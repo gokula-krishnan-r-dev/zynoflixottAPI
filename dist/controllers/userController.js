@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateProductionCompany = exports.getProductionCompanyById = exports.getProductCompany = exports.CreateProductionCompany = exports.updateUser = exports.getUserById = exports.getFollowerByUserId = exports.getFollowers = exports.followUser = exports.logoutUser = exports.loginUser = exports.createUser = exports.allUsers = void 0;
+exports.getByIdTvOsAuth = exports.verifyTvOsAuth = exports.createTvOsAuth = exports.updateProductionCompany = exports.getProductionCompanyById = exports.getDirectorsCompany = exports.getProductCompany = exports.CreateProductionCompany = exports.updateUser = exports.getUserById = exports.getFollowerByUserId = exports.getFollowers = exports.followUser = exports.logoutUser = exports.loginUser = exports.createUser = exports.allUsers = void 0;
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const user_model_1 = require("../model/user.model");
@@ -20,6 +20,8 @@ const token_model_1 = require("../model/token.model");
 const follower_model_1 = __importDefault(require("../model/follower.model"));
 const production_model_1 = require("../model/production.model");
 const video_model_1 = __importDefault(require("../model/video.model"));
+const tvOs_model_1 = __importDefault(require("../model/tvOs.model"));
+const uuid_1 = require("uuid");
 const allUsers = (req, res) => {
     try {
         const users = user_model_1.User.find({});
@@ -58,7 +60,14 @@ const createUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
             accessToken: token,
         });
         if (newSession) {
-            res.status(201).json({ accessToken: token, message: "User created" });
+            res.status(201).json({
+                accessToken: token,
+                message: "User created",
+                user: {
+                    _id: newUser._id,
+                },
+                isProduction: "user",
+            });
         }
         else {
             throw new Error("Failed to create session");
@@ -334,6 +343,7 @@ const CreateProductionCompany = (req, res) => __awaiter(void 0, void 0, void 0, 
             contactNumber: req.body.contactNumber,
             password: password,
             logo: logo,
+            profile_type: req.body.profile_type,
         });
         // Generate JWT token
         const token = jsonwebtoken_1.default.sign({ userId: newProductionCompany.id }, process.env.JWT_SECRET || "demo", {
@@ -364,7 +374,8 @@ exports.CreateProductionCompany = CreateProductionCompany;
 const getProductCompany = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const productionCompany = yield production_model_1.ProductionCompany.find({});
-        res.status(200).json({ productionCompany });
+        const filterByProfileType = productionCompany.filter((company) => company.profile_type === "production");
+        res.status(200).json({ productionCompany: filterByProfileType });
     }
     catch (error) {
         console.log(error);
@@ -372,6 +383,18 @@ const getProductCompany = (req, res) => __awaiter(void 0, void 0, void 0, functi
     }
 });
 exports.getProductCompany = getProductCompany;
+const getDirectorsCompany = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const productionCompany = yield production_model_1.ProductionCompany.find({});
+        const filterByProfileType = productionCompany.filter((company) => company.profile_type === "directors");
+        res.status(200).json({ productionCompany: filterByProfileType });
+    }
+    catch (error) {
+        console.log(error);
+        res.status(500).json({ error: "Something went wrong!" });
+    }
+});
+exports.getDirectorsCompany = getDirectorsCompany;
 // get by id
 const getProductionCompanyById = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -429,3 +452,77 @@ const updateProductionCompany = (req, res) => __awaiter(void 0, void 0, void 0, 
     }
 });
 exports.updateProductionCompany = updateProductionCompany;
+const createTvOsAuth = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        // Generate a 6-digit OTP
+        const otp = Math.floor(100000 + Math.random() * 900000);
+        const uuid = (0, uuid_1.v4)();
+        // Create a new TvOs entry with the generated OTP
+        const newTvOs = yield tvOs_model_1.default.create({
+            uuid,
+            accessToken: "sdsd",
+            username: "tvOsuser",
+            userId: "sdsd",
+            role: "user",
+            otp,
+        });
+        // Respond with the created TvOs entry
+        res.status(201).json({ tvOs: newTvOs });
+    }
+    catch (error) {
+        console.error("Error creating TvOs auth:", error);
+        res.status(500).json({ error: "Something went wrong!" });
+    }
+});
+exports.createTvOsAuth = createTvOsAuth;
+const verifyTvOsAuth = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { otp, userId } = req.body;
+        const user = yield user_model_1.User.findById(userId);
+        if (!user) {
+            res.status(404).json({ error: "User not found" });
+            return;
+        }
+        // Find TvOs entry by UUID
+        const tvOs = yield tvOs_model_1.default.findOne({ otp });
+        if (!tvOs) {
+            res.status(404).json({ error: "TvOs not found" });
+            return;
+        }
+        // Check if the provided OTP matches the TvOs entry
+        if (tvOs.otp !== otp) {
+            res.status(400).json({ error: "Invalid OTP" });
+            return;
+        }
+        // Generate JWT token
+        const token = jsonwebtoken_1.default.sign({ userId: userId }, process.env.JWT_SECRET || "demo", {
+            expiresIn: "7d",
+        });
+        // Update the TvOs entry with the generated JWT token
+        tvOs.accessToken = token;
+        tvOs.success = true;
+        tvOs.username = user.full_name;
+        tvOs.role = "user";
+        tvOs.userId = userId;
+        yield tvOs.save();
+        // Respond with the TvOs entry
+        res.status(200).json({ tvOs });
+    }
+    catch (error) {
+        console.error("Error verifying TvOs auth:", error);
+        res.status(500).json({ error: "Something went wrong!" });
+    }
+});
+exports.verifyTvOsAuth = verifyTvOsAuth;
+const getByIdTvOsAuth = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { uuid } = req.params;
+    try {
+        const tvOs = yield tvOs_model_1.default.find({ uuid });
+        res.status(200).json({ tvOs });
+    }
+    catch (error) {
+        console.error("Error getting TvOs auth:", error);
+        res.status(500).json({ error: "Something went wrong!" });
+    }
+});
+exports.getByIdTvOsAuth = getByIdTvOsAuth;

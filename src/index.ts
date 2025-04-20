@@ -32,21 +32,36 @@ const app: Express = express();
 const port = process.env.PORT || 8080;
 app.use(
   cors({
-    origin: [
-      "http://13.200.249.153",
-      "http://localhost:3000",
-      "http://13.200.249.153:3000",
-      "http://zynoflixott.com",
-      "http://www.zynoflixott.com",
-      "http://zynoflixott.com:3000",
-      "http://www.zynoflixott.com:3000",
-      "https://zynoflixott.com",
-      "https://www.zynoflixott.com",
-      "http://localhost:3001",
-      "https://zynoflixott-web.vercel.app",
-      "https://2a9e-203-192-241-134.ngrok-free.app",
-    ],
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+
+      const allowedOrigins = [
+        "http://13.200.249.153",
+        "http://localhost:3000",
+        "http://13.200.249.153:3000",
+        "http://zynoflixott.com",
+        "http://www.zynoflixott.com",
+        "http://zynoflixott.com:3000",
+        "http://www.zynoflixott.com:3000",
+        "https://zynoflixott.com",
+        "https://www.zynoflixott.com",
+        "http://localhost:3001",
+        "https://zynoflixott-web.vercel.app",
+        "https://2a9e-203-192-241-134.ngrok-free.app",
+        // Add other origins if needed, potentially from environment variables
+      ];
+
+      if (allowedOrigins.indexOf(origin) === -1) {
+        const msg =
+          "The CORS policy for this site does not allow access from the specified Origin.";
+        return callback(new Error(msg), false);
+      }
+      return callback(null, true);
+    },
     credentials: true,
+    methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS", // Allow standard methods including OPTIONS for preflight
+    allowedHeaders: "Content-Type,Authorization,X-Requested-With,Accept,Origin", // Allow common headers
   })
 );
 app.get("/", (req: Request, res: Response) => {

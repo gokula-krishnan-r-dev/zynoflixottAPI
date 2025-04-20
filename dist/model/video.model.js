@@ -103,6 +103,23 @@ const videoSchema = new mongoose_1.Schema({
         type: Object,
         default: {},
     },
+    averageRating: {
+        type: Number,
+        default: 0, // Default average rating is 0
+    },
+    ratings: [
+        {
+            userId: {
+                type: mongoose_1.Schema.Types.ObjectId,
+                ref: "user_profile",
+                required: true,
+            },
+            rating: {
+                type: Number,
+                required: true,
+            },
+        },
+    ],
 }, {
     timestamps: true,
 });
