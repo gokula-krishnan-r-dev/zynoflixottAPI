@@ -6,7 +6,22 @@
       "use": "@vercel/node"
     }
   ],
-  "routes": [{ "src": "/(.*)", "dest": "dist/index.js" }],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "dist/index.js",
+      "headers": {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type,Authorization,X-Requested-With,Accept,Origin",
+        "Access-Control-Allow-Credentials": "true"
+      }
+    },
+    {
+      "src": "/(.*)",
+      "dest": "dist/index.js"
+    }
+  ],
   "env": {
     "NODE_ENV": "production"
   },
