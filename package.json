@@ -6,10 +6,11 @@
     "node": "20.x"
   },
   "scripts": {
-    "start": "node dist/index.js",
     "dev": "nodemon index.ts",
-    "build": "tsc",
+    "start": "nodemon src/index.ts",
+    "build": "rimraf dist && tsc",
     "vercel-build": "tsc -p tsconfig.vercel.json",
+    "ts.check": "tsc --project tsconfig.json",
     "postinstall": "tsc -p tsconfig.vercel.json",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
