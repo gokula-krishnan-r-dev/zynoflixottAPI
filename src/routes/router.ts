@@ -17,6 +17,7 @@ import {
   verifyTvOsAuth,
   getByIdTvOsAuth,
   getDirectorsCompany,
+  deleteUser,
 } from "../controllers/userController";
 import {
   BannerVideoFromAdmin,
@@ -65,6 +66,7 @@ const router = express.Router();
 
 // User
 router.get("/auth/user", allUsers);
+router.delete("/auth/user/:user_id", deleteUser);
 router.get("/auth/user/:user_id", getUserById);
 router.post("/auth/signup", createUser);
 router.post("/auth/login", loginUser);

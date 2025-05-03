@@ -620,3 +620,23 @@ export const getByIdTvOsAuth = async (
     res.status(500).json({ error: "Something went wrong!" });
   }
 };
+
+
+
+//delete user 
+export const deleteUser = async (req: Request, res: Response) => {
+  try {
+    const { user_id } = req.params;
+    const user = await User.findById(user_id);
+    if (!user) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+    await User.deleteOne({ _id: user_id });
+    res.status(200).json({ message: "User deleted" });
+  } catch (error) {
+    console.error("Error deleting user:", error);
+    
+    res.status(500).json({ error: "Something went wrong!" });
+  }
+};
