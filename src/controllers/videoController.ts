@@ -1,35 +1,78 @@
-import { Request, Response } from "express";
-import { v4 as uuidv4 } from "uuid";
-const sharp = require("sharp");
+import express, { Request, Response } from "express";
+import mongoose from "mongoose";
 import VideoModel, { IVideo } from "../model/video.model";
-
-import { PutObjectCommand } from "@aws-sdk/client-s3";
-import { bucketName, s3 } from "../service/db/s3/s3";
-import BannerModel from "../model/banner.model";
-import ViewModel from "../model/view.model";
+import { User } from "../model/user.model";
 import LikeModel from "../model/like.model";
 import { ProductionCompany } from "../model/production.model";
+import { getFileUrl } from "./blobHelpers";
+import BannerModel from "../model/banner.model";
+import ViewModel from "../model/view.model";
 
-// Function to upload image to S3 after resizing
-const uploadImageToS3 = async (imageBuffer: any, options: any) => {
-  const key = uuidv4() + ".jpeg";
-  const uploadParams = {
-    Bucket: bucketName,
-    Body: imageBuffer,
-    ContentType: options.contentType,
-    Key: options.path + key,
-  };
-  const command = new PutObjectCommand(uploadParams);
-  await s3.send(command);
-  return key;
-};
+// Remove the resizeImage function since it's not compatible with Azure Blob Storage
+// We'll need to implement Azure-specific image processing if needed later
 
-// Function to resize and compress image
-const resizeAndCompressImage = async (imageBuffer: any, options: any) => {
-  return await sharp(imageBuffer)
-    .resize(options.resize)
-    .jpeg(options.jpeg)
-    .toBuffer();
+export const uploadVideo = async (req: any, res: Response) => {
+  try {
+    // Check if the user is authorized to upload a video
+    const userId = req.userId;
+    if (!userId) {
+      return res.status(400).json({ error: "User not found" });
+    }
+
+    // Assuming thumbnail, preview_video, and orginal_video are available in req.files
+    const thumbnail = getFileUrl(req.files["thumbnail"][0]);
+    const preview_video = getFileUrl(req.files["preview_video"][0]);
+    const original_video = getFileUrl(req.files["orginal_video"][0]);
+
+    // Define configurations for image qualities
+    const configurations = {
+      thumbnail: {
+        width: 320,
+        height: 180,
+      },
+      low: {
+        width: 640,
+        height: 360,
+      },
+      medium: {
+        width: 854,
+        height: 480,
+      },
+      high: {
+        width: 1280,
+        height: 720,
+      },
+      hd: {
+        width: 1920,
+        height: 1080,
+      },
+    };
+
+    // Create the video data
+    const video = await VideoModel.create({
+      title: req.body.title,
+      description: req.body.description,
+      thumbnail: thumbnail,
+      preview_video: preview_video,
+      orginal_video: original_video,
+      userId: userId,
+      tags: req.body.tags,
+      categories: req.body.categories,
+      duration: req.body.duration,
+      visibility: req.body.visibility,
+      configs: configurations,
+    });
+
+    // Add the video to the user's videos array
+    await User.findByIdAndUpdate(userId, {
+      $push: { videos: video._id },
+    });
+
+    res.status(201).json({ message: "Video uploaded", video });
+  } catch (error: any) {
+    console.error("Error uploading video:", error);
+    res.status(500).json({ error: "Error uploading video", details: error.message });
+  }
 };
 
 export const SearchVideo = async (req: Request, res: Response) => {
@@ -65,42 +108,42 @@ export const Createvideos = async (req: any, res: Response) => {
     }
 
     // Assuming thumbnail, preview_video, and orginal_video are available in req.files
-    const thumbnail = req.files["thumbnail"][0].location;
-    const preview_video = req.files["preview_video"][0].location;
-    const original_video = req.files["orginal_video"][0].location;
+    const thumbnail = getFileUrl(req.files["thumbnail"][0]);
+    const preview_video = getFileUrl(req.files["preview_video"][0]);
+    const original_video = getFileUrl(req.files["orginal_video"][0]);
 
     // Define configurations for image qualities
     const imageQualities = {
-      medium: { resize: { width: 480, height: 360 }, jpeg: { quality: 70 } },
-      small: { resize: { width: 110, height: 100 }, jpeg: { quality: 50 } },
-      high: { resize: { width: 720, height: 540 }, jpeg: { quality: 90 } },
+      medium: { width: 480, height: 360 },
+      small: { width: 110, height: 100 },
+      high: { width: 720, height: 540 },
     };
 
-    // Fetch the image from the S3 URL and convert to Buffer
-    let fetchedImage = await fetch(thumbnail);
-    let originalImageBuffer = Buffer.from(await fetchedImage.arrayBuffer());
-
-    // Process each image quality configuration
-    const processedImages: any = {};
-    for (const [quality, options] of Object.entries(imageQualities)) {
-      const compressedImageBuffer = await resizeAndCompressImage(
-        originalImageBuffer,
-        options
-      );
-
-      const s3UploadResult = await uploadImageToS3(compressedImageBuffer, {
-        contentType: "image/jpeg",
-        path: "thumbnail_ott/compressed/",
-      });
-
-      processedImages[quality] = {
+    // For Azure Blob Storage, we're not performing image processing here
+    // If image processing is needed, a separate Azure Function or service should be implemented
+    const processedImages: any = {
+      medium: {
         caption: "caption",
-        path: s3UploadResult,
-        width: options.resize.width,
-        height: options.resize.height,
+        path: thumbnail,
+        width: imageQualities.medium.width,
+        height: imageQualities.medium.height,
         type: "image/jpeg",
-      };
-    }
+      },
+      small: {
+        caption: "caption",
+        path: thumbnail,
+        width: imageQualities.small.width,
+        height: imageQualities.small.height,
+        type: "image/jpeg",
+      },
+      high: {
+        caption: "caption",
+        path: thumbnail,
+        width: imageQualities.high.width,
+        height: imageQualities.high.height,
+        type: "image/jpeg",
+      }
+    };
 
     const newVideo = await VideoModel.create({
       title,
@@ -140,41 +183,41 @@ export const CreateBannervideos = async (req: any, res: Response) => {
     } = req.body;
 
     // Assuming thumbnail, preview_video, and orginal_video are available in req.files
-    const thumbnail = req.files["thumbnail"][0].location;
-    const preview_video = req.files["preview_video"][0].location;
+    const thumbnail = getFileUrl(req.files["thumbnail"][0]);
+    const preview_video = getFileUrl(req.files["preview_video"][0]);
 
     // Define configurations for image qualities
     const imageQualities = {
-      medium: { resize: { width: 480, height: 360 }, jpeg: { quality: 70 } },
-      small: { resize: { width: 110, height: 100 }, jpeg: { quality: 50 } },
-      high: { resize: { width: 720, height: 540 }, jpeg: { quality: 90 } },
+      medium: { width: 480, height: 360 },
+      small: { width: 110, height: 100 },
+      high: { width: 720, height: 540 },
     };
 
-    // Fetch the image from the S3 URL and convert to Buffer
-    let fetchedImage = await fetch(thumbnail);
-    let originalImageBuffer = Buffer.from(await fetchedImage.arrayBuffer());
-
-    // Process each image quality configuration
-    const processedImages: any = {};
-    for (const [quality, options] of Object.entries(imageQualities)) {
-      const compressedImageBuffer = await resizeAndCompressImage(
-        originalImageBuffer,
-        options
-      );
-
-      const s3UploadResult = await uploadImageToS3(compressedImageBuffer, {
-        contentType: "image/jpeg",
-        path: "thumbnail_ott/compressed/",
-      });
-
-      processedImages[quality] = {
+    // For Azure Blob Storage, we're not performing image processing here
+    // If image processing is needed, a separate Azure Function or service should be implemented
+    const processedImages: any = {
+      medium: {
         caption: "caption",
-        path: s3UploadResult,
-        width: options.resize.width,
-        height: options.resize.height,
+        path: thumbnail,
+        width: imageQualities.medium.width,
+        height: imageQualities.medium.height,
         type: "image/jpeg",
-      };
-    }
+      },
+      small: {
+        caption: "caption",
+        path: thumbnail,
+        width: imageQualities.small.width,
+        height: imageQualities.small.height,
+        type: "image/jpeg",
+      },
+      high: {
+        caption: "caption",
+        path: thumbnail,
+        width: imageQualities.high.width,
+        height: imageQualities.high.height,
+        type: "image/jpeg",
+      }
+    };
 
     const newVideo = await VideoModel.create({
       title,
@@ -620,5 +663,28 @@ export const getRating = async (req: any, res: Response) => {
   } catch (error: any) {
     console.log(error);
     res.status(500).json({ error: "Something went wrong!" });
+  }
+};
+
+export const createBanner = async (req: any, res: Response) => {
+  try {
+    // Get the user ID
+    const userId = req.userId;
+
+    // Assuming thumbnail is available in req.files
+    const thumbnail = getFileUrl(req.files["thumbnail"][0]);
+
+    // Create the banner
+    const banner = await BannerModel.create({
+      title: req.body.title,
+      description: req.body.description,
+      thumbnail: thumbnail,
+      link: req.body.link,
+    });
+
+    res.status(201).json({ message: "Banner created", banner });
+  } catch (error: any) {
+    console.error("Error creating banner:", error);
+    res.status(500).json({ error: "Error creating banner", details: error.message });
   }
 };

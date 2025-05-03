@@ -67,7 +67,7 @@ if (ChatModule) {
 const app = (0, express_1.default)();
 const port = process.env.PORT || 8080;
 app.use((0, cors_1.default)({
-    origin: (origin, callback) => {
+    origin: function (origin, callback) {
         // Allow requests with no origin (like mobile apps or curl requests)
         if (!origin)
             return callback(null, true);
@@ -86,20 +86,42 @@ app.use((0, cors_1.default)({
             "https://2a9e-203-192-241-134.ngrok-free.app",
             "https://zynoflix-ott-api.vercel.app",
             "https://zynoflix-ott-api-*.vercel.app",
-            // Add other origins if needed, potentially from environment variables
+            "https://api.zynoflixott.com",
+            "http://api.zynoflixott.com",
+            "https://www.api.zynoflixott.com",
+            "http://www.api.zynoflixott.com",
         ];
-        if (allowedOrigins.indexOf(origin) === -1) {
-            const msg = "The CORS policy for this site does not allow access from the specified Origin.";
-            return callback(new Error(msg), false);
+        // Check if origin is in allowedOrigins
+        if (allowedOrigins.includes(origin)) {
+            return callback(null, true);
         }
-        return callback(null, true);
+        // Check for wildcard matches (for subdomains)
+        for (const pattern of allowedOrigins) {
+            if (pattern.includes("*") &&
+                new RegExp(pattern.replace("*", ".*")).test(origin)) {
+                return callback(null, true);
+            }
+        }
+        const msg = `The CORS policy for this site does not allow access from the specified Origin: ${origin}`;
+        return callback(new Error(msg), false);
     },
     credentials: true,
-    methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS", // Allow standard methods including OPTIONS for preflight
-    allowedHeaders: "Content-Type,Authorization,X-Requested-With,Accept,Origin", // Allow common headers
+    methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS",
+    allowedHeaders: "Content-Type,Authorization,X-Requested-With,Accept,Origin",
+    exposedHeaders: "Content-Range,X-Content-Range",
 }));
 app.get("/", (req, res) => {
     res.send("Express + TypeScript Server is running");
+});
+// Add a health check endpoint
+app.get("/api/health", (req, res) => {
+    res.status(200).json({
+        status: "ok",
+        message: "API is operational",
+        timestamp: new Date().toISOString(),
+        cors: "enabled",
+        environment: process.env.NODE_ENV || "development",
+    });
 });
 app.use(express_1.default.json());
 app.use(express_1.default.urlencoded({ extended: true }));

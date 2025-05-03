@@ -7,6 +7,7 @@ import FollowerModel from "../model/follower.model";
 import { ProductionCompany } from "../model/production.model";
 import VideoModel from "../model/video.model";
 import TvOsModel from "../model/tvOs.model";
+import { getFileUrl } from "./blobHelpers";
 
 import { v4 as uuidv4 } from "uuid";
 export const allUsers = (req: Request, res: Response): void => {
@@ -320,8 +321,7 @@ export const updateUser = async (req: any, res: Response): Promise<void> => {
   try {
     const { user_id } = req.params;
     const { full_name, description } = req.body;
-    console.log(user_id);
-
+    console.log(req.files, "req.file");
     const accessToken = req.headers.authorization.split(" ")[1];
 
     const secret = process.env.JWT_SECRET || "demo";
@@ -339,13 +339,15 @@ export const updateUser = async (req: any, res: Response): Promise<void> => {
       return;
     }
 
+   
+
     if (req.files["profilePic"]) {
-      const profilePic = req.files["profilePic"][0].location;
+      const profilePic = getFileUrl(req.files["profilePic"][0]);
       user.profilePic = profilePic;
     }
 
     if (req.files["backgroundPic"]) {
-      const backgroundImage = req.files["backgroundPic"][0].location;
+      const backgroundImage = getFileUrl(req.files["backgroundPic"][0]);
       user.backgroundPic = backgroundImage;
     }
 
@@ -369,7 +371,7 @@ export const updateUser = async (req: any, res: Response): Promise<void> => {
 //  PRODUCTION LOGIN
 export const CreateProductionCompany = async (req: any, res: Response) => {
   try {
-    const logo = req.files["logo"][0].location;
+    const logo = getFileUrl(req.files["logo"][0]);
     const exitingUser = await User.findOne({
       email: req.body.email,
     });

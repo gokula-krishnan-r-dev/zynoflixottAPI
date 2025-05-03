@@ -3,31 +3,33 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.upload = exports.s3 = exports.bucketName = void 0;
-const client_s3_1 = require("@aws-sdk/client-s3");
+exports.upload = exports.azureStorage = void 0;
+const multer_azure_blob_storage_1 = require("multer-azure-blob-storage");
 const dotenv_1 = __importDefault(require("dotenv"));
 const multer = require("multer");
-const multerS3 = require("multer-s3");
 dotenv_1.default.config();
-const region = process.env.AWS_REGION || "us-east-1";
-exports.bucketName = process.env.AWS_BUCKET_NAME || "etubees";
-const accessKeyId = process.env.AWS_ACCESS_KEY || "Q";
-const secretAccessKey = process.env.AWS_SECRET_KEY || "Q";
-exports.s3 = new client_s3_1.S3Client({
-    region: region,
-    credentials: { accessKeyId, secretAccessKey },
+// Azure Storage configuration
+const accountName = process.env.AZURE_STORAGE_ACCOUNT_NAME || "youraccountname";
+const accountKey = process.env.AZURE_STORAGE_ACCESS_KEY || "youraccesskey";
+const containerName = process.env.AZURE_STORAGE_CONTAINER_NAME || "zynoflix-ott";
+// Configure Azure Blob Storage connection
+exports.azureStorage = new multer_azure_blob_storage_1.MulterAzureStorage({
+    connectionString: process.env.AZURE_STORAGE_CONNECTION_STRING,
+    accessKey: accountKey,
+    accountName: accountName,
+    containerName: containerName,
+    containerAccessLevel: 'blob',
+    urlExpirationTime: 60,
+    blobName: (req, file) => {
+        return new Promise((resolve, reject) => {
+            const directoryPath = "zynoflix/";
+            const blobName = directoryPath + Date.now().toString() + "-" + file.originalname;
+            resolve(blobName);
+        });
+    }
 });
+// Create multer middleware with Azure Storage
 exports.upload = multer({
-    storage: multerS3({
-        s3: exports.s3,
-        bucket: exports.bucketName,
-        metadata: function (req, file, cb) {
-            cb(null, { fieldName: file.fieldname });
-        },
-        key: function (req, file, cb) {
-            const directoryPath = "zynoflix-ott/"; // Define the directory path here
-            cb(null, directoryPath + Date.now().toString() + "-" + file.originalname);
-        },
-    }),
+    storage: exports.azureStorage
 });
 //# sourceMappingURL=s3.js.map

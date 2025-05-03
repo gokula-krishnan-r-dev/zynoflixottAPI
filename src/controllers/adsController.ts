@@ -1,28 +1,18 @@
-import { Request, Response } from "express";
-import Ad from "../model/ads.model";
+import express, { Express, Request, Response } from "express";
+import AdsModel from "../model/ads.model";
+import { getFileUrl } from "./blobHelpers";
 
 export const createAds = async (req: any, res: Response) => {
   try {
-    const ads_video = req.files["ads_video"][0].location;
-    if (!ads_video) {
-      return res.status(400).json({ error: "Please provide a video" });
-    }
-
-    const { title, link } = req.body;
-    if (!title || !link) {
-      return res.status(400).json({ error: "Please provide a title and link" });
-    }
-
-    const ads = await Ad.create({
-      title,
-      video: ads_video,
-      link,
+    const ads_video = getFileUrl(req.files["ads_video"][0]);
+    const newAds = await AdsModel.create({
+      title: req.body.title,
+      ads_video,
+      description: req.body.description,
     });
-    res.status(201).json(ads);
-  } catch (error) {
-    console.log(error);
-
-    res.status(500).json({ error: "Something Went wrong!" });
+    res.status(201).json({ message: "Ads created", ads: newAds });
+  } catch (error: any) {
+    res.status(500).json({ error: "Something went wrong!" });
   }
 };
 
@@ -30,11 +20,11 @@ export const getAds = async (req: Request, res: Response) => {
   try {
     const query = req.query.query;
     if (query) {
-      const ads = await Ad.find({ title: { $regex: query, $options: "i" } });
+      const ads = await AdsModel.find({ title: { $regex: query, $options: "i" } });
       return res.status(200).json(ads);
     }
 
-    const ads = await Ad.find({});
+    const ads = await AdsModel.find({});
     res.status(200).json(ads);
   } catch (error) {
     console.log(error);
@@ -45,7 +35,7 @@ export const getAds = async (req: Request, res: Response) => {
 export const activeAds = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const ads = await Ad.findById(id);
+    const ads = await AdsModel.findById(id);
     if (!ads) {
       return res.status(404).json({ error: "Ads not found" });
     }

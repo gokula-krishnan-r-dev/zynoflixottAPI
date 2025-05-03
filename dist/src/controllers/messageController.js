@@ -43,7 +43,7 @@ class MessageController extends BaseController_1.default {
                 console.error("Error saving message:", error);
             }
         });
-        this.sendMessage = (_c) => __awaiter(this, [_c], void 0, function* ({ content, roomId, sender }) {
+        this.sendMessage = (_a) => __awaiter(this, [_a], void 0, function* ({ content, roomId, sender }) {
             try {
                 let skt = this.socket.broadcast;
                 skt = roomId ? skt.to(roomId) : skt;

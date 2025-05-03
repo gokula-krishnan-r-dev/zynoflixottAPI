@@ -21,6 +21,7 @@ const follower_model_1 = __importDefault(require("../model/follower.model"));
 const production_model_1 = require("../model/production.model");
 const video_model_1 = __importDefault(require("../model/video.model"));
 const tvOs_model_1 = __importDefault(require("../model/tvOs.model"));
+const blobHelpers_1 = require("./blobHelpers");
 const uuid_1 = require("uuid");
 const allUsers = (req, res) => {
     try {
@@ -280,7 +281,6 @@ const updateUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
     try {
         const { user_id } = req.params;
         const { full_name, description } = req.body;
-        console.log(user_id);
         const accessToken = req.headers.authorization.split(" ")[1];
         const secret = process.env.JWT_SECRET || "demo";
         const decoded = jsonwebtoken_1.default.verify(accessToken, secret);
@@ -293,12 +293,13 @@ const updateUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
             res.status(404).json({ error: "User not found" });
             return;
         }
-        if (req.files["profilePic"]) {
-            const profilePic = req.files["profilePic"][0].location;
+        console.log(req.files, "req.file");
+        if (req.file) {
+            const profilePic = (0, blobHelpers_1.getFileUrl)(req.file);
             user.profilePic = profilePic;
         }
         if (req.files["backgroundPic"]) {
-            const backgroundImage = req.files["backgroundPic"][0].location;
+            const backgroundImage = (0, blobHelpers_1.getFileUrl)(req.files["backgroundPic"][0]);
             user.backgroundPic = backgroundImage;
         }
         if (full_name) {
@@ -319,7 +320,7 @@ exports.updateUser = updateUser;
 //  PRODUCTION LOGIN
 const CreateProductionCompany = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const logo = req.files["logo"][0].location;
+        const logo = (0, blobHelpers_1.getFileUrl)(req.files["logo"][0]);
         const exitingUser = yield user_model_1.User.findOne({
             email: req.body.email,
         });

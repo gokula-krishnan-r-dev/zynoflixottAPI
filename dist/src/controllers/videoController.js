@@ -12,35 +12,75 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getRating = exports.rateVideo = exports.getCategories = exports.getLikes = exports.postVideoLike = exports.postVideoViews = exports.trendingVideos = exports.BannerVideoFromAdmin = exports.addBannerVideo = exports.searchVideo = exports.findVideoByLanguage = exports.activeBanner = exports.findVideoByCategory = exports.bannerVideo = exports.findVideoByUserId = exports.findVideoById = exports.allVideos = exports.CreateBannervideos = exports.Createvideos = exports.SearchVideo = void 0;
-const uuid_1 = require("uuid");
-const sharp = require("sharp");
+exports.createBanner = exports.getRating = exports.rateVideo = exports.getCategories = exports.getLikes = exports.postVideoLike = exports.postVideoViews = exports.trendingVideos = exports.BannerVideoFromAdmin = exports.addBannerVideo = exports.searchVideo = exports.findVideoByLanguage = exports.activeBanner = exports.findVideoByCategory = exports.bannerVideo = exports.findVideoByUserId = exports.findVideoById = exports.allVideos = exports.CreateBannervideos = exports.Createvideos = exports.SearchVideo = exports.uploadVideo = void 0;
 const video_model_1 = __importDefault(require("../model/video.model"));
-const client_s3_1 = require("@aws-sdk/client-s3");
-const s3_1 = require("../service/db/s3/s3");
+const user_model_1 = require("../model/user.model");
+const like_model_1 = __importDefault(require("../model/like.model"));
+const blobHelpers_1 = require("./blobHelpers");
 const banner_model_1 = __importDefault(require("../model/banner.model"));
 const view_model_1 = __importDefault(require("../model/view.model"));
-const like_model_1 = __importDefault(require("../model/like.model"));
-// Function to upload image to S3 after resizing
-const uploadImageToS3 = (imageBuffer, options) => __awaiter(void 0, void 0, void 0, function* () {
-    const key = (0, uuid_1.v4)() + ".jpeg";
-    const uploadParams = {
-        Bucket: s3_1.bucketName,
-        Body: imageBuffer,
-        ContentType: options.contentType,
-        Key: options.path + key,
-    };
-    const command = new client_s3_1.PutObjectCommand(uploadParams);
-    yield s3_1.s3.send(command);
-    return key;
+// Remove the resizeImage function since it's not compatible with Azure Blob Storage
+// We'll need to implement Azure-specific image processing if needed later
+const uploadVideo = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        // Check if the user is authorized to upload a video
+        const userId = req.userId;
+        if (!userId) {
+            return res.status(400).json({ error: "User not found" });
+        }
+        // Assuming thumbnail, preview_video, and orginal_video are available in req.files
+        const thumbnail = (0, blobHelpers_1.getFileUrl)(req.files["thumbnail"][0]);
+        const preview_video = (0, blobHelpers_1.getFileUrl)(req.files["preview_video"][0]);
+        const original_video = (0, blobHelpers_1.getFileUrl)(req.files["orginal_video"][0]);
+        // Define configurations for image qualities
+        const configurations = {
+            thumbnail: {
+                width: 320,
+                height: 180,
+            },
+            low: {
+                width: 640,
+                height: 360,
+            },
+            medium: {
+                width: 854,
+                height: 480,
+            },
+            high: {
+                width: 1280,
+                height: 720,
+            },
+            hd: {
+                width: 1920,
+                height: 1080,
+            },
+        };
+        // Create the video data
+        const video = yield video_model_1.default.create({
+            title: req.body.title,
+            description: req.body.description,
+            thumbnail: thumbnail,
+            preview_video: preview_video,
+            orginal_video: original_video,
+            userId: userId,
+            tags: req.body.tags,
+            categories: req.body.categories,
+            duration: req.body.duration,
+            visibility: req.body.visibility,
+            configs: configurations,
+        });
+        // Add the video to the user's videos array
+        yield user_model_1.User.findByIdAndUpdate(userId, {
+            $push: { videos: video._id },
+        });
+        res.status(201).json({ message: "Video uploaded", video });
+    }
+    catch (error) {
+        console.error("Error uploading video:", error);
+        res.status(500).json({ error: "Error uploading video", details: error.message });
+    }
 });
-// Function to resize and compress image
-const resizeAndCompressImage = (imageBuffer, options) => __awaiter(void 0, void 0, void 0, function* () {
-    return yield sharp(imageBuffer)
-        .resize(options.resize)
-        .jpeg(options.jpeg)
-        .toBuffer();
-});
+exports.uploadVideo = uploadVideo;
 const SearchVideo = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
     }
@@ -62,34 +102,40 @@ const Createvideos = (req, res) => __awaiter(void 0, void 0, void 0, function* (
             return res.status(400).json({ error: "Video already exists" });
         }
         // Assuming thumbnail, preview_video, and orginal_video are available in req.files
-        const thumbnail = req.files["thumbnail"][0].location;
-        const preview_video = req.files["preview_video"][0].location;
-        const original_video = req.files["orginal_video"][0].location;
+        const thumbnail = (0, blobHelpers_1.getFileUrl)(req.files["thumbnail"][0]);
+        const preview_video = (0, blobHelpers_1.getFileUrl)(req.files["preview_video"][0]);
+        const original_video = (0, blobHelpers_1.getFileUrl)(req.files["orginal_video"][0]);
         // Define configurations for image qualities
         const imageQualities = {
-            medium: { resize: { width: 480, height: 360 }, jpeg: { quality: 70 } },
-            small: { resize: { width: 110, height: 100 }, jpeg: { quality: 50 } },
-            high: { resize: { width: 720, height: 540 }, jpeg: { quality: 90 } },
+            medium: { width: 480, height: 360 },
+            small: { width: 110, height: 100 },
+            high: { width: 720, height: 540 },
         };
-        // Fetch the image from the S3 URL and convert to Buffer
-        let fetchedImage = yield fetch(thumbnail);
-        let originalImageBuffer = Buffer.from(yield fetchedImage.arrayBuffer());
-        // Process each image quality configuration
-        const processedImages = {};
-        for (const [quality, options] of Object.entries(imageQualities)) {
-            const compressedImageBuffer = yield resizeAndCompressImage(originalImageBuffer, options);
-            const s3UploadResult = yield uploadImageToS3(compressedImageBuffer, {
-                contentType: "image/jpeg",
-                path: "thumbnail_ott/compressed/",
-            });
-            processedImages[quality] = {
+        // For Azure Blob Storage, we're not performing image processing here
+        // If image processing is needed, a separate Azure Function or service should be implemented
+        const processedImages = {
+            medium: {
                 caption: "caption",
-                path: s3UploadResult,
-                width: options.resize.width,
-                height: options.resize.height,
+                path: thumbnail,
+                width: imageQualities.medium.width,
+                height: imageQualities.medium.height,
                 type: "image/jpeg",
-            };
-        }
+            },
+            small: {
+                caption: "caption",
+                path: thumbnail,
+                width: imageQualities.small.width,
+                height: imageQualities.small.height,
+                type: "image/jpeg",
+            },
+            high: {
+                caption: "caption",
+                path: thumbnail,
+                width: imageQualities.high.width,
+                height: imageQualities.high.height,
+                type: "image/jpeg",
+            }
+        };
         const newVideo = yield video_model_1.default.create({
             title,
             description,
@@ -118,33 +164,39 @@ const CreateBannervideos = (req, res) => __awaiter(void 0, void 0, void 0, funct
     try {
         const { title, description, language, status, duration, category, created_by_id, created_by_name, } = req.body;
         // Assuming thumbnail, preview_video, and orginal_video are available in req.files
-        const thumbnail = req.files["thumbnail"][0].location;
-        const preview_video = req.files["preview_video"][0].location;
+        const thumbnail = (0, blobHelpers_1.getFileUrl)(req.files["thumbnail"][0]);
+        const preview_video = (0, blobHelpers_1.getFileUrl)(req.files["preview_video"][0]);
         // Define configurations for image qualities
         const imageQualities = {
-            medium: { resize: { width: 480, height: 360 }, jpeg: { quality: 70 } },
-            small: { resize: { width: 110, height: 100 }, jpeg: { quality: 50 } },
-            high: { resize: { width: 720, height: 540 }, jpeg: { quality: 90 } },
+            medium: { width: 480, height: 360 },
+            small: { width: 110, height: 100 },
+            high: { width: 720, height: 540 },
         };
-        // Fetch the image from the S3 URL and convert to Buffer
-        let fetchedImage = yield fetch(thumbnail);
-        let originalImageBuffer = Buffer.from(yield fetchedImage.arrayBuffer());
-        // Process each image quality configuration
-        const processedImages = {};
-        for (const [quality, options] of Object.entries(imageQualities)) {
-            const compressedImageBuffer = yield resizeAndCompressImage(originalImageBuffer, options);
-            const s3UploadResult = yield uploadImageToS3(compressedImageBuffer, {
-                contentType: "image/jpeg",
-                path: "thumbnail_ott/compressed/",
-            });
-            processedImages[quality] = {
+        // For Azure Blob Storage, we're not performing image processing here
+        // If image processing is needed, a separate Azure Function or service should be implemented
+        const processedImages = {
+            medium: {
                 caption: "caption",
-                path: s3UploadResult,
-                width: options.resize.width,
-                height: options.resize.height,
+                path: thumbnail,
+                width: imageQualities.medium.width,
+                height: imageQualities.medium.height,
                 type: "image/jpeg",
-            };
-        }
+            },
+            small: {
+                caption: "caption",
+                path: thumbnail,
+                width: imageQualities.small.width,
+                height: imageQualities.small.height,
+                type: "image/jpeg",
+            },
+            high: {
+                caption: "caption",
+                path: thumbnail,
+                width: imageQualities.high.width,
+                height: imageQualities.high.height,
+                type: "image/jpeg",
+            }
+        };
         const newVideo = yield video_model_1.default.create({
             title,
             description,
@@ -543,11 +595,11 @@ const rateVideo = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
 exports.rateVideo = rateVideo;
 // get rating as per video
 const getRating = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _e;
+    var _a;
     try {
         const video_id = req.params.video_id;
         const video = yield video_model_1.default.findById(video_id);
-        res.status(200).json({ video, rating: (_e = video === null || video === void 0 ? void 0 : video.ratings) === null || _e === void 0 ? void 0 : _e.length });
+        res.status(200).json({ video, rating: (_a = video === null || video === void 0 ? void 0 : video.ratings) === null || _a === void 0 ? void 0 : _a.length });
     }
     catch (error) {
         console.log(error);
@@ -555,4 +607,25 @@ const getRating = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     }
 });
 exports.getRating = getRating;
+const createBanner = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        // Get the user ID
+        const userId = req.userId;
+        // Assuming thumbnail is available in req.files
+        const thumbnail = (0, blobHelpers_1.getFileUrl)(req.files["thumbnail"][0]);
+        // Create the banner
+        const banner = yield banner_model_1.default.create({
+            title: req.body.title,
+            description: req.body.description,
+            thumbnail: thumbnail,
+            link: req.body.link,
+        });
+        res.status(201).json({ message: "Banner created", banner });
+    }
+    catch (error) {
+        console.error("Error creating banner:", error);
+        res.status(500).json({ error: "Error creating banner", details: error.message });
+    }
+});
+exports.createBanner = createBanner;
 //# sourceMappingURL=videoController.js.map
