@@ -244,10 +244,24 @@ export const CreateBannervideos = async (req: any, res: Response) => {
 // Get all videos
 export const allVideos = async (req: Request, res: Response) => {
   try {
-    const videos = await VideoModel.find({})
+    const language = req.query.language || "English";
+    console.log(language, "language");
+    
+    let query = {};
+    
+    // If language is not 'all', apply the language filter
+    if (language !== 'all') {
+      // Create a case-insensitive regex pattern for the language
+      const languageRegex = new RegExp(String(language), 'i');
+      query = { language: { $in: [languageRegex] } };
+    }
+    
+    const videos = await VideoModel.find(query)
       .populate("viewsId")
       .populate("likesId")
-      .populate("user");
+      .populate("user")
+      .limit(20);
+
 
     res.status(200).json({ videos });
   } catch (error: any) {
