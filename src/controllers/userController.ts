@@ -477,6 +477,23 @@ export const getProductionCompanyById = async (req: Request, res: Response) => {
   }
 };
 
+//delete production company
+export const deleteProductionCompany = async (req: Request, res: Response) => {
+  try {
+    const { user_id } = req.params;
+    const user = await ProductionCompany.findById(user_id);
+    if (!user) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+    await ProductionCompany.deleteOne({ _id: user_id });
+    res.status(200).json({ message: "Production company deleted" });
+  } catch (error) {
+    console.error("Error deleting production company:", error);
+    res.status(500).json({ error: "Something went wrong!" });
+  }
+};
+
 // PUT for upload and change production company logo or any other details
 export const updateProductionCompany = async (req: any, res: Response) => {
   try {

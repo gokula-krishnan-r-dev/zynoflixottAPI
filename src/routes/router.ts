@@ -18,6 +18,7 @@ import {
   getByIdTvOsAuth,
   getDirectorsCompany,
   deleteUser,
+  deleteProductionCompany,
 } from "../controllers/userController";
 import {
   BannerVideoFromAdmin,
@@ -100,6 +101,8 @@ router.put(
   cpUploadBackground,
   updateProductionCompany
 );
+
+router.delete("/auth/production/user/:user_id", deleteProductionCompany);
 
 // upload video
 const cpUpload = upload.fields([
