@@ -68,7 +68,8 @@ const router = express.Router();
 router.get("/auth/user", allUsers);
 router.delete("/auth/user/:user_id", deleteUser);
 router.get("/auth/user/:user_id", getUserById);
-router.post("/auth/signup", createUser);
+const cpLogo = upload.fields([{ name: "logo", maxCount: 1 }]);
+router.post("/auth/signup", cpLogo, createUser);
 router.post("/auth/login", loginUser);
 router.get("/auth/logout", logoutUser);
 

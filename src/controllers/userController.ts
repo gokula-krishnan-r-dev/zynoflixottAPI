@@ -20,11 +20,13 @@ export const allUsers = (req: Request, res: Response): void => {
 };
 
 export const createUser = async (
-  req: Request,
+  req: any,
   res: Response
 ): Promise<void> => {
   try {
     const { email, password, full_name } = req.body;
+
+    const profilePic = req.files && req.files["profilePic"] ? getFileUrl(req.files["profilePic"][0]) : undefined;
 
     // Check if user with provided email already exists
     const existingUser = await User.findOne({ email });
@@ -42,6 +44,7 @@ export const createUser = async (
       email,
       password: hashedPassword,
       full_name,
+      profilePic,
     });
 
     // Generate JWT token
@@ -339,7 +342,7 @@ export const updateUser = async (req: any, res: Response): Promise<void> => {
       return;
     }
 
-   
+
 
     if (req.files["profilePic"]) {
       const profilePic = getFileUrl(req.files["profilePic"][0]);
@@ -636,7 +639,7 @@ export const deleteUser = async (req: Request, res: Response) => {
     res.status(200).json({ message: "User deleted" });
   } catch (error) {
     console.error("Error deleting user:", error);
-    
+
     res.status(500).json({ error: "Something went wrong!" });
   }
 };
