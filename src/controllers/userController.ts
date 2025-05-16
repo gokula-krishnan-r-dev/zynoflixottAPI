@@ -374,27 +374,47 @@ export const updateUser = async (req: any, res: Response): Promise<void> => {
 //  PRODUCTION LOGIN
 export const CreateProductionCompany = async (req: any, res: Response) => {
   try {
+    console.log("Step 1: Starting CreateProductionCompany function");
+    console.log("Request body:", req.body);
+    console.log("Request files:", req.files);
+
+    if (!req.files || !req.files["logo"] || !req.files["logo"][0]) {
+      console.log("Error: Logo file is missing");
+      return res.status(400).json({ error: "Logo file is required" });
+    }
+
+    console.log("Step 2: Getting logo file URL");
     const logo = getFileUrl(req.files["logo"][0]);
+    console.log("Logo URL:", logo);
+
+    console.log("Step 3: Checking if user already exists in User collection");
     const exitingUser = await User.findOne({
       email: req.body.email,
     });
+    console.log("Existing user:", exitingUser);
 
     if (exitingUser) {
+      console.log("Error: User already exists in User collection");
       res.status(400).json({ error: "User already exists" });
       return;
     }
 
+    console.log("Step 4: Checking if production company already exists");
     const existingProductionCompany = await ProductionCompany.findOne({
       email: req.body.email,
     });
+    console.log("Existing production company:", existingProductionCompany);
 
     if (existingProductionCompany) {
+      console.log("Error: User already exists in ProductionCompany collection");
       res.status(400).json({ error: "User already exists" });
       return;
     }
 
+    console.log("Step 5: Hashing password");
     const password = await bcrypt.hash(req.body.password, 10);
 
+    console.log("Step 6: Creating new production company");
     const newProductionCompany = await ProductionCompany.create({
       name: req.body.name,
       founderName: req.body.founderName,
@@ -405,8 +425,9 @@ export const CreateProductionCompany = async (req: any, res: Response) => {
       logo: logo,
       profile_type: req.body.profile_type,
     });
+    console.log("New production company created:", newProductionCompany.id);
 
-    // Generate JWT token
+    console.log("Step 7: Generating JWT token");
     const token = jwt.sign(
       { userId: newProductionCompany.id },
       process.env.JWT_SECRET || "demo",
@@ -414,24 +435,30 @@ export const CreateProductionCompany = async (req: any, res: Response) => {
         expiresIn: "7d",
       }
     );
+    console.log("JWT token generated");
 
-    // Create session
+    console.log("Step 8: Creating session");
     const newSession = await Session.create({
       userId: newProductionCompany.id,
       accessToken: token,
     });
+    console.log("Session created:", newSession);
 
     if (newSession) {
+      console.log("Step 9: Sending successful response");
       res.status(201).json({
         accessToken: token,
         message: "User created",
         userId: newProductionCompany.id,
       });
     } else {
+      console.log("Error: Failed to create session");
       throw new Error("Failed to create session");
     }
   } catch (error: any) {
-    console.log(error);
+    console.log("Error in CreateProductionCompany:", error);
+    console.log("Error message:", error.message);
+    console.log("Error stack:", error.stack);
     res.status(500).json({ error: "Something went wrong!" });
   }
 };
