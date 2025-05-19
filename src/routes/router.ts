@@ -112,7 +112,7 @@ const cpUpload = upload.fields([
 ]);
 
 const cpUploadBanner = upload.fields([
-  { name: "preview_video", maxCount: 1 },
+  { name: "orginal_video", maxCount: 1 },
   { name: "thumbnail", maxCount: 1 },
 ]);
 

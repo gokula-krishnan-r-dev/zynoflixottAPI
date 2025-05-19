@@ -87,10 +87,10 @@ const resolveBlobName = (req: any, file: Express.Multer.File): Promise<string> =
       // Create a unique file name with the original extension
       const fileExtension = path.extname(file.originalname);
       const fileName = `${Date.now()}-${uuidv4()}${fileExtension}`;
-      
+
       // Combine directory path and file name
       const blobName = directoryPath + fileName;
-      
+
       resolve(blobName);
     } catch (error) {
       reject(error);
@@ -111,7 +111,7 @@ const resolveMetadata = (req: any, file: Express.Multer.File): Promise<Record<st
       originalName: file.originalname,
       uploadedAt: new Date().toISOString()
     };
-    
+
     resolve(metadata);
   });
 };
@@ -125,7 +125,7 @@ const resolveContentSettings = (req: any, file: Express.Multer.File): Promise<Re
     const contentSettings: Record<string, string> = {
       contentType: file.mimetype
     };
-    
+
     resolve(contentSettings);
   });
 };
@@ -144,8 +144,8 @@ export const azureStorage = new MulterAzureStorage({
 });
 
 // Configure multer for maximum file sizes
-const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
-const MAX_FIELDS = 10;
+const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB - increased to support larger videos
+const MAX_FIELDS = 100; // Increased from 10 to 100 to allow more form fields
 
 // Create multer middleware with Azure Storage
 export const upload = multer({
@@ -158,7 +158,7 @@ export const upload = multer({
   fileFilter: (req, file, cb) => {
     // Define allowed MIME types based on field name
     const fieldName = file.fieldname.toLowerCase();
-    
+
     // Allow videos for video uploads
     if (fieldName.includes('video') || fieldName.includes('orginal') || fieldName.includes('preview')) {
       const allowedMimeTypes = ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime'];
@@ -169,11 +169,11 @@ export const upload = multer({
         // We can't pass an error directly, so we'll log it instead
         console.error(`Invalid file type for ${fieldName}. Expected video file but got ${file.mimetype}`);
       }
-    } 
+    }
     // Allow images for profile, thumbnail, banner
-    else if (fieldName.includes('profile') || fieldName.includes('thumbnail') || 
-             fieldName.includes('banner') || fieldName.includes('background') || 
-             fieldName.includes('logo')) {
+    else if (fieldName.includes('profile') || fieldName.includes('thumbnail') ||
+      fieldName.includes('banner') || fieldName.includes('background') ||
+      fieldName.includes('logo')) {
       const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
       if (allowedMimeTypes.includes(file.mimetype)) {
         cb(null, true);
@@ -182,7 +182,7 @@ export const upload = multer({
         // We can't pass an error directly, so we'll log it instead
         console.error(`Invalid file type for ${fieldName}. Expected image file but got ${file.mimetype}`);
       }
-    } 
+    }
     // Allow any file type for other fields
     else {
       cb(null, true);
