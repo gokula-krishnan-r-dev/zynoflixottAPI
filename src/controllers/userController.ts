@@ -510,8 +510,14 @@ export const deleteProductionCompany = async (req: Request, res: Response) => {
     const { user_id } = req.params;
     const user = await ProductionCompany.findById(user_id);
     if (!user) {
-      res.status(404).json({ error: "User not found" });
-      return;
+
+      const user = await User.findById(user_id);
+      if (!user) {
+        res.status(404).json({ error: "User not found" });
+        return;
+      }
+      await User.deleteOne({ _id: user_id });
+      res.status(200).json({ message: "User deleted" });
     }
     await ProductionCompany.deleteOne({ _id: user_id });
     res.status(200).json({ message: "Production company deleted" });
