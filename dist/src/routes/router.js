@@ -17,10 +17,16 @@ const notificationController_1 = require("../controllers/notificationController"
 const router = express_1.default.Router();
 // User
 router.get("/auth/user", userController_1.allUsers);
+router.delete("/auth/user/:user_id", userController_1.deleteUser);
 router.get("/auth/user/:user_id", userController_1.getUserById);
-router.post("/auth/signup", userController_1.createUser);
+const cpLogo = s3_1.upload.fields([{ name: "logo", maxCount: 1 }]);
+router.post("/auth/signup", cpLogo, userController_1.createUser);
 router.post("/auth/login", userController_1.loginUser);
 router.get("/auth/logout", userController_1.logoutUser);
+// Student Brand Ambassador
+const cpStudentProfile = s3_1.upload.fields([{ name: "profilePic", maxCount: 1 }]);
+router.post("/auth/student-ambassador/signup", cpStudentProfile, userController_1.createStudentAmbassador);
+router.post("/auth/student-ambassador/payment", userController_1.studentAmbassadorPayment);
 router.post("/auth/tvos/otp", userController_1.createTvOsAuth);
 router.post("/auth/tvos/verify", userController_1.verifyTvOsAuth);
 router.get("/auth/verify/:uuid", userController_1.getByIdTvOsAuth);
@@ -40,6 +46,7 @@ router.get("/auth/production/user", userController_1.getProductCompany);
 router.get("/auth/director/user", userController_1.getDirectorsCompany);
 router.get("/auth/production/user/:user_id", userController_1.getProductionCompanyById);
 router.put("/auth/production/user", findUserMiddleware_1.authMiddleware, cpUploadBackground, userController_1.updateProductionCompany);
+router.delete("/auth/production/user/:user_id", userController_1.deleteProductionCompany);
 // upload video
 const cpUpload = s3_1.upload.fields([
     { name: "preview_video", maxCount: 1 },
@@ -47,7 +54,7 @@ const cpUpload = s3_1.upload.fields([
     { name: "orginal_video", maxCount: 1 },
 ]);
 const cpUploadBanner = s3_1.upload.fields([
-    { name: "preview_video", maxCount: 1 },
+    { name: "orginal_video", maxCount: 1 },
     { name: "thumbnail", maxCount: 1 },
 ]);
 router.post("/create_videos", cpUpload, videoController_1.Createvideos);

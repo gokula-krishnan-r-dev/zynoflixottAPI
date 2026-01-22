@@ -57,7 +57,61 @@ const UserProfileSchema = new mongoose_1.Schema({
     isMembership: { type: Boolean, default: false },
     membershipId: { type: mongoose_1.Schema.Types.ObjectId, ref: "Membership" },
     is_active: { type: Boolean, default: true },
+    userType: {
+        type: String,
+        default: "user",
+        enum: ["user", "student_ambassador"],
+        required: false,
+        index: true // Add index for better query performance
+    },
+    college_name: {
+        type: String,
+        required: function () {
+            return this.userType === "student_ambassador";
+        }
+    },
+    age: {
+        type: Number,
+        min: 1,
+        max: 150,
+        required: function () {
+            return this.userType === "student_ambassador";
+        }
+    },
+    registrationFeePaid: {
+        type: Boolean,
+        default: false,
+        index: true // Add index for better query performance
+    },
 }, { timestamps: true });
+// Pre-save hook to ensure userType is set correctly for student ambassadors
+UserProfileSchema.pre("save", function (next) {
+    // If user has student ambassador fields, ensure userType is set
+    if ((this.college_name || this.age !== undefined) && !this.userType) {
+        this.userType = "student_ambassador";
+    }
+    // If userType is student_ambassador, ensure required fields exist
+    if (this.userType === "student_ambassador") {
+        if (!this.college_name || !this.age) {
+            return next(new Error("College name and age are required for student ambassadors"));
+        }
+    }
+    next();
+});
+// Instance method to check if user is a student ambassador
+UserProfileSchema.methods.isStudentAmbassador = function () {
+    return this.userType === "student_ambassador";
+};
+// Static method to find student ambassadors
+UserProfileSchema.statics.findStudentAmbassadors = function () {
+    return this.find({ userType: "student_ambassador" });
+};
+// Create indexes for better query performance
+UserProfileSchema.index({ userType: 1 });
+UserProfileSchema.index({ email: 1, userType: 1 });
+UserProfileSchema.index({ registrationFeePaid: 1, userType: 1 });
+UserProfileSchema.index({ college_name: 1 }); // Index for student ambassador queries
+UserProfileSchema.index({ age: 1 }); // Index for age queries
 const User = mongoose_1.default.model("user_profile", UserProfileSchema);
 exports.User = User;
 //# sourceMappingURL=user.model.js.map

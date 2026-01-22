@@ -97,14 +97,25 @@ const Createvideos = (req, res) => __awaiter(void 0, void 0, void 0, function* (
     try {
         const { title, description, language, status, duration, category, is_feature_video, user, created_by_id, created_by_name, } = req.body;
         console.log(req.files);
+        if (!title || !description) {
+            return res.status(400).json({ error: "Title and description are required" });
+        }
         const exitingsVideo = yield video_model_1.default.find({ title: title });
         if (exitingsVideo.length > 0) {
             return res.status(400).json({ error: "Video already exists" });
         }
-        // Assuming thumbnail, preview_video, and orginal_video are available in req.files
+        // Check if required files are available
+        if (!req.files || !req.files["thumbnail"] || !req.files["orginal_video"]) {
+            return res.status(400).json({ error: "Thumbnail and original video are required" });
+        }
+        // Get file URLs
         const thumbnail = (0, blobHelpers_1.getFileUrl)(req.files["thumbnail"][0]);
-        const preview_video = (0, blobHelpers_1.getFileUrl)(req.files["preview_video"][0]);
         const original_video = (0, blobHelpers_1.getFileUrl)(req.files["orginal_video"][0]);
+        // Preview video is optional, use original video as preview if not available
+        let preview_video = original_video;
+        if (req.files["preview_video"] && req.files["preview_video"][0]) {
+            preview_video = (0, blobHelpers_1.getFileUrl)(req.files["preview_video"][0]);
+        }
         // Define configurations for image qualities
         const imageQualities = {
             medium: { width: 480, height: 360 },
@@ -136,13 +147,23 @@ const Createvideos = (req, res) => __awaiter(void 0, void 0, void 0, function* (
                 type: "image/jpeg",
             }
         };
+        // Handle language - convert to array if it's a string
+        let languageArray = language;
+        // If language is a string, convert to array
+        if (typeof language === 'string') {
+            languageArray = [language];
+        }
+        // If language is not provided, set as default
+        else if (!language) {
+            languageArray = ["English"];
+        }
         const newVideo = yield video_model_1.default.create({
             title,
             description,
             thumbnail,
             preview_video,
             original_video,
-            language,
+            language: languageArray,
             user,
             status,
             duration,
@@ -163,9 +184,20 @@ exports.Createvideos = Createvideos;
 const CreateBannervideos = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { title, description, language, status, duration, category, created_by_id, created_by_name, } = req.body;
-        // Assuming thumbnail, preview_video, and orginal_video are available in req.files
+        if (!title || !description) {
+            return res.status(400).json({ error: "Title and description are required" });
+        }
+        // Check if required files are available
+        if (!req.files || !req.files["thumbnail"]) {
+            return res.status(400).json({ error: "Thumbnail is required" });
+        }
+        // Get file URLs
         const thumbnail = (0, blobHelpers_1.getFileUrl)(req.files["thumbnail"][0]);
-        const preview_video = (0, blobHelpers_1.getFileUrl)(req.files["preview_video"][0]);
+        // Preview video is optional
+        let preview_video = "";
+        if (req.files["preview_video"] && req.files["preview_video"][0]) {
+            preview_video = (0, blobHelpers_1.getFileUrl)(req.files["preview_video"][0]);
+        }
         // Define configurations for image qualities
         const imageQualities = {
             medium: { width: 480, height: 360 },
@@ -197,12 +229,22 @@ const CreateBannervideos = (req, res) => __awaiter(void 0, void 0, void 0, funct
                 type: "image/jpeg",
             }
         };
+        // Handle language - convert to array if it's a string
+        let languageArray = language;
+        // If language is a string, convert to array
+        if (typeof language === 'string') {
+            languageArray = [language];
+        }
+        // If language is not provided, set as default
+        else if (!language) {
+            languageArray = ["English"];
+        }
         const newVideo = yield video_model_1.default.create({
             title,
             description,
             thumbnail,
             preview_video,
-            language,
+            language: languageArray,
             status,
             duration,
             category,
@@ -222,10 +264,26 @@ exports.CreateBannervideos = CreateBannervideos;
 // Get all videos
 const allVideos = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const videos = yield video_model_1.default.find({})
+        const language = req.query.language || "English";
+        console.log(language, "language");
+        let query = {};
+        // If language is not 'all', apply the language filter
+        if (language !== 'all') {
+            // Create a case-insensitive regex pattern for the language
+            const languageRegex = new RegExp(String(language), 'i');
+            // Query handles both array and string storage formats
+            query = {
+                $or: [
+                    { language: languageRegex }, // For string fields
+                    { language: { $in: [languageRegex] } } // For array fields
+                ]
+            };
+        }
+        const videos = yield video_model_1.default.find(query)
             .populate("viewsId")
             .populate("likesId")
-            .populate("user");
+            .populate("user")
+            .limit(20);
         res.status(200).json({ videos });
     }
     catch (error) {

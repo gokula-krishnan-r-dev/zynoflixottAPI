@@ -19,6 +19,10 @@ import {
   getDirectorsCompany,
   deleteUser,
   deleteProductionCompany,
+  createStudentAmbassador,
+  studentAmbassadorPayment,
+  createStudentAmbassadorRazorpayOrder,
+  verifyStudentAmbassadorPayment,
 } from "../controllers/userController";
 import {
   BannerVideoFromAdmin,
@@ -73,6 +77,13 @@ const cpLogo = upload.fields([{ name: "logo", maxCount: 1 }]);
 router.post("/auth/signup", cpLogo, createUser);
 router.post("/auth/login", loginUser);
 router.get("/auth/logout", logoutUser);
+
+// Student Brand Ambassador
+const cpStudentProfile = upload.fields([{ name: "profilePic", maxCount: 1 }]);
+router.post("/auth/student-ambassador/signup", cpStudentProfile, createStudentAmbassador);
+router.post("/auth/student-ambassador/payment", studentAmbassadorPayment); // Legacy endpoint
+router.post("/auth/student-ambassador/create-order", createStudentAmbassadorRazorpayOrder);
+router.post("/auth/student-ambassador/verify-payment", verifyStudentAmbassadorPayment);
 
 router.post("/auth/tvos/otp", createTvOsAuth);
 router.post("/auth/tvos/verify", verifyTvOsAuth);
