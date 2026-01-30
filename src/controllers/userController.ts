@@ -1563,3 +1563,25 @@ export const studentAmbassadorPayment = async (
     });
   }
 };
+
+/** Public list of registered student ambassadors (profile image + name only). Used on signup page. */
+export const getStudentAmbassadorsList = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const limit = Math.min(Number(req.query.limit) || 50, 100);
+    const ambassadors = await User.find({ userType: "student_ambassador" })
+      .select("_id full_name profilePic")
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .lean();
+    res.status(200).json({
+      ambassadors: ambassadors.map((a: any) => ({
+        _id: a._id,
+        full_name: a.full_name || "Ambassador",
+        profilePic: a.profilePic || "https://i.sstatic.net/l60Hf.png",
+      })),
+    });
+  } catch (error: any) {
+    console.error("getStudentAmbassadorsList error:", error);
+    res.status(500).json({ error: "Failed to fetch ambassadors list" });
+  }
+};

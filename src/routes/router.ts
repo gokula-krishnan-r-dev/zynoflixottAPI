@@ -23,6 +23,7 @@ import {
   studentAmbassadorPayment,
   createStudentAmbassadorRazorpayOrder,
   verifyStudentAmbassadorPayment,
+  getStudentAmbassadorsList,
 } from "../controllers/userController";
 import {
   BannerVideoFromAdmin,
@@ -84,6 +85,7 @@ router.post("/auth/student-ambassador/signup", cpStudentProfile, createStudentAm
 router.post("/auth/student-ambassador/payment", studentAmbassadorPayment); // Legacy endpoint
 router.post("/auth/student-ambassador/create-order", createStudentAmbassadorRazorpayOrder);
 router.post("/auth/student-ambassador/verify-payment", verifyStudentAmbassadorPayment);
+router.get("/auth/student-ambassador/list", getStudentAmbassadorsList);
 
 router.post("/auth/tvos/otp", createTvOsAuth);
 router.post("/auth/tvos/verify", verifyTvOsAuth);
