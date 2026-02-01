@@ -317,7 +317,10 @@ export const getUserById = async (
       return;
     }
 
-    res.status(200).json({ user });
+    // Ensure registrationFeePaid is always a boolean for correct profile display (student ambassadors)
+    const userObj = user.toObject ? user.toObject() : { ...(user as any) };
+    userObj.registrationFeePaid = user.registrationFeePaid === true;
+    res.status(200).json({ user: userObj });
   } catch (error: any) {
     console.log(error, "error");
     res.status(500).json({ error: "Something went wrong!" });

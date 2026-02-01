@@ -140,12 +140,15 @@ app.get("/api/health", (req: Request, res: Response) => {
   });
 });
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Allow large payloads (e.g. PUT /auth/user with profile/background images 10MB+)
+// Multipart/form-data is handled by multer in routes; these apply to JSON/urlencoded
+const bodyLimit = "25mb";
+app.use(express.json({ limit: bodyLimit }));
+app.use(express.urlencoded({ limit: bodyLimit, extended: true }));
 app.use(express.static("public"));
 
-app.use(bodyParser.json({ limit: "50mb" })); // Reduced limit for better performance
-app.use(bodyParser.urlencoded({ limit: "50mb", extended: true }));
+app.use(bodyParser.json({ limit: bodyLimit }));
+app.use(bodyParser.urlencoded({ limit: bodyLimit, extended: true }));
 
 // Only attach the router if it was loaded successfully
 if (routerModule) {
